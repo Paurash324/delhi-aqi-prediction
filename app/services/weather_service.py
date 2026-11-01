@@ -1,12 +1,15 @@
 """Live weather forecast service using Open-Meteo API with local caching and offline fallback."""
 from __future__ import annotations
 import json
+import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional
 import httpx
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Open-Meteo WMO weather code descriptions
 WMO_WEATHER_CODES = {
@@ -38,6 +41,30 @@ class WeatherService:
         self.api_url = "https://api.open-meteo.com/v1/forecast"
         self.cache_file = settings.WEATHER_CACHE_FILE
         self.cache_expiry = settings.CACHE_EXPIRY_SECONDS
+        # Protect concurrent cold-start fetches from hammering Open-Meteo.
+        self._fetch_lock: Any = None
+        import asyncio as _asyncio
+
+        class _LocalAsyncLock:
+            def __init__(self) -> None:
+                self._lock = _asyncio.Lock()
+
+            async def acquire(self) -> None:
+                await self._lock.acquire()
+
+            def release(self) -> None:
+                self._lock.release()
+
+            async def __aenter__(self) -> Any:
+                await self.acquire()
+                return self
+
+            async def __aexit__(self, *args: Any) -> None:
+                self.release()
+
+        self._LocalAsyncLock = _LocalAsyncLock
+        # Expose for deterministic testing only.
+        WeatherService._LocalAsyncLock = _LocalAsyncLock
 
     def _read_cache(self) -> Optional[Dict[str, Any]]:
         """Read cached weather response if valid."""
@@ -87,30 +114,53 @@ class WeatherService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                res = await client.get(self.api_url, params=params)
-                if res.status_code == 200:
-                    raw = res.json()
-                    parsed = self._parse_open_meteo_response(raw)
-                    self._write_cache(parsed)
-                    return parsed
-                # Non-200 response is an upstream failure - try to use cache if available
-                if cached:
-                    cached_data = dict(cached)
-                    cached_data["cached"] = True
-                    cached_data["_is_stale"] = True
-                    cached_data["warning"] = (
-                        cached_data.get("warning")
-                        or f"Upstream weather API returned HTTP {res.status_code}; serving cached forecast."
+            async with self._LocalAsyncLock() as lock:
+                # Re-read cache inside the lock so a concurrent cold start does not
+                # cause multiple upstream fetches to run in parallel.
+                cached = self._read_cache()
+                if cached and not cached.get("_is_stale", False):
+                    data = dict(cached)
+                    data["cached"] = True
+                    return data
+
+                request_params = dict(params)
+                logger.debug("Requesting Open-Meteo: url=%s params=%s", self.api_url, request_params)
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    res = await client.get(self.api_url, params=request_params)
+                    logger.info(
+                        "Open-Meteo upstream response: status=%s url=%s",
+                        getattr(res, "status_code", None), self.api_url,
                     )
-                    src = cached_data.get("source") or ""
-                    if "stale" not in str(src).lower() and "cached" not in str(src).lower():
-                        cached_data["source"] = f"Cached weather forecast (stale) - {src}".strip()
-                    else:
-                        cached_data["source"] = src
-                    return cached_data
-        except Exception:
+                    if res.status_code == 200:
+                        raw = res.json()
+                        parsed = self._parse_open_meteo_response(raw)
+                        self._write_cache(parsed)
+                        logger.info("Weather cache written successfully")
+                        return parsed
+                    # Non-200 response is an upstream failure - try to use cache if available
+                    if cached:
+                        cached_data = dict(cached)
+                        cached_data["cached"] = True
+                        cached_data["_is_stale"] = True
+                        cached_data["warning"] = (
+                            cached_data.get("warning")
+                            or f"Upstream weather API returned HTTP {res.status_code}; serving cached forecast."
+                        )
+                        src = cached_data.get("source") or ""
+                        if "stale" not in str(src).lower() and "cached" not in str(src).lower():
+                            cached_data["source"] = f"Cached weather forecast (stale) - {src}".strip()
+                        else:
+                            cached_data["source"] = src
+                        return cached_data
+                    # No cache and upstream failed
+                    logger.warning(
+                        "No weather cache available and upstream returned HTTP %s; returning unavailable",
+                        getattr(res, "status_code", None),
+                    )
+                    return self._offline_fallback()
+        except Exception as exc:
             # Network failure or timeout: use stale cache if available
+            logger.warning("Open-Meteo fetch failed: %s", exc, exc_info=False)
             if cached:
                 cached_data = dict(cached)
                 cached_data["cached"] = True
@@ -126,8 +176,9 @@ class WeatherService:
                     cached_data["source"] = src
                 return cached_data
 
-        # If no cache exists and network/upstream failed, do not fabricate values
-        return self._offline_fallback()
+            # No cache exists and network/upstream failed
+            logger.warning("No weather cache available and upstream fetch failed; returning unavailable")
+            return self._offline_fallback()
 
     def _parse_open_meteo_response(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         """Format Open-Meteo payload into structured weather view."""
