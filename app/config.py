@@ -27,7 +27,10 @@ class Settings(BaseModel):
     CACHE_EXPIRY_SECONDS: int = 1800  # 30 minutes
     
     # Rate limiting
-    RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_PER_MINUTE: int = 300
+    # Trusted proxy hosts/IPs for header-based client IP extraction.
+    # Leave empty to be conservative (do not trust forwarded headers).
+    TRUSTED_PROXY_HOSTS: list = []
 
     # Live station observations (data.gov.in real-time CPCB resource).
     # The credential is read from the environment at call time and is never

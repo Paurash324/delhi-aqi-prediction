@@ -13,12 +13,24 @@ from app.routes.live_routes import router as live_router
 from app.routes.external_forecast_routes import router as external_forecast_router
 from app.routes.demo_routes import router as demo_router
 from app.services.prediction_service import prediction_service
+try:
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+except Exception:
+    ProxyHeadersMiddleware = None
 
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Delhi CPCB-method-derived AQI forecast and historical replay prototype."
 )
+
+# Do NOT blindly trust all proxy headers. Only add ProxyHeadersMiddleware if explicitly configured.
+trusted_proxy_hosts = getattr(settings, "TRUSTED_PROXY_HOSTS", None)
+if ProxyHeadersMiddleware is not None and trusted_proxy_hosts:
+    try:
+        app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=trusted_proxy_hosts)
+    except Exception:
+        pass
 
 # Add security & rate limiting middleware
 app.add_middleware(SecurityMiddleware)
