@@ -1,0 +1,905 @@
+/* ==========================================================================
+   HI AQI PREDICTION DASHBOARD — EDITORIAL CINEMATIC DEL SYSTEM
+   Premium weather product aesthetic: distinctive, intentional, not templated
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&display=swap');
+
+:root {
+  /* Natural atmospheric palette: fog grey, muted sage, charcoal, soft off-white */
+  --bg-deep: #0a0e12;
+  --text-main: #f0f4f8;
+  --text-sub: #78a0b0;
+  --text-dim: #5a758c;
+
+  /* Frosted glass – muted, low-contrast for readability */
+  --glass: rgba(10, 18, 26, 0.4);
+  --glass-elevated: rgba(14, 24, 34, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-subtle: rgba(255, 255, 255, 0.04);
+  --glass-blur: blur(20px) saturate(110%);
+  --glass-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* Restrained accent – single teal, never neon or purple */
+  --accent-teal: #2dc7c7;
+  --accent-teal-soft: rgba(45, 199, 199, 0.1);
+  --accent-sage: #6cc288;
+  --accent-warm-grey: #e8eef5;
+
+  /* CPCB AQI – muted, integrated */
+  --cpcb-good: #65a30d;
+  --cpcb-good: rgba(101, 163, 13, 0.12);
+  --cpcb-good-border: rgba(101, 163, 13, 0.25);
+
+  --cpcb-satisfactory: #a3e635;
+  --cpcb-satisfactory: rgba(163, 230, 53, 0.12);
+  --cpcb-satisfactory-border: rgba(163, 230, 53, 0.25);
+
+  --cpcb-moderate: #fbbf24;
+  --cpcb-moderate: rgba(251, 191, 6, 0.12);
+  --cpcb-moderate-border: rgba(251, 191, 36, 0.25);
+
+  --cpcb-poor: #f87171;
+  --cpcb-poor: rgba(248, 113, 113, 0.12);
+  --cpcb-poor-border: rgba(248, 113, 113, 0.25);
+
+  --cpcb-very-poor: #f6ad55;
+  --cpcb-very-poor: rgba(246, 173, 85, 0.12);
+  --cpcb-very-poor-border: rgba(246, 173, 85, 0.25);
+
+  --cpcb-severe: #ef4444;
+  --cpcb-severe: rgba(239, 68, 68, 0.15);
+  --cpcb-severe-border: rgba(239, 68, 68, 0.3);
+
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: 'Merriweather', Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --b-sm: 8px;
+  --b-md: 14px;
+  --b-lg: 22px;
+  --b-xl: 28px;
+  --b-pill: 6px;
+  --rail-width: 56px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+/* ==========================================================================
+   CINEMATIC BACKGROUND: GENUINE DEL
+   ========================================================================== */
+.bg-layer-container {
+  position: fixed;
+  top: -10px;
+  left: -10px;
+  width: calc(100vw + 20px);
+  height: calc(100vh + 20px);
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+}
+
+.bg-layer.bg-heavy-smog {
+  background-image: url('/static/images/bg_heavy_smass.webp');
+}
+
+.bg-layer.bg-hazy-sky {
+  background-image: url('/static/images/bg_hazy_sky.webp');
+}
+
+.bg-layer.bg-clear-sky {
+  /* Genuine Delhi photograph – visible through subtle scrim */
+  background-image: url('/static/images/delhi_actual_smooth.jpg');
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.bg-layer.active {
+  opacity: 1;
+}
+
+/* Subtle scrim – enough contrast for text, not enough to obscure the photo */
+.bg-overlay-scrim {
+  position: fixed;
+  top: -5px;
+  left: -5px;
+  width: calc(100vw + 10px);
+  height: calc(100vh + 10px);
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(circle at 30% 70%, rgba(10, 14, 18, 0.25) 0%, rgba(6, 10, 14, 0.35) 50%, rgba(4, 8, 12, 0.45) 100%),
+              linear-gradient(180deg, rgba(10, 14, 18, 0.15) 0%, rgba(6, 10, 14, 0.2) 50%, rgba(5, 9, 13, 0.25) 100%);
+}
+
+/* ==========================================================================
+   APP SHELL LAYOUT
+   ========================================================================== */
+.app-container {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+}
+
+/* Narrow left navigation rail – reduced width */
+.nav-rail {
+  width: var(--rail-width);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  background: rgba(10, 18, 26, 0.6);
+  b-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border-subtle);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--glass-border-subtle);
+}
+
+.rail-b {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--b-md);
+  background: rgba(16, 30, 40, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-teal);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  font-size: 18px;
+}
+
+.rail-b:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.04);
+  border-color: var(--glass-border-subtle);
+}
+
+.rail-b.active {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--glass-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.rail-b .tooltip {
+  position: absolute;
+  left: calc(var(--rail-width) + 6px);
+  background: rgba(12, 22, 30, 0.9);
+  color: var(--text-main);
+  padding: 4px 8px;
+  border-radius: var(--b-sm);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.rail-b:hover .tooltip {
+  opacity: 1;
+  transform: translateX(0);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.rail-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+.rail-b {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--b-md);
+  background: transparent;
+  border: none;
+  color: var(--accent-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  font-size: 18px;
+  background: none;
+  padding: 0;
+}
+
+/* ==========================================================================
+   MAIN WORKSPACE
+   ========================================================================== */
+.main-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 32px 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+  gap: 16px;
+}
+
+/* ==========================================================================
+   HEADER: minimal, editorial
+   ========================================================================== */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border-subtle);
+}
+
+.welcome-lead {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-sub);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.location-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.location-badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+  box-shadow: 0 0 8px var(--accent-teal);
+}
+
+/* ==========================================================================
+   MODE TABS: subtle, not aggressive
+   ========================================================================== */
+.mode-tabs {
+  display: flex;
+  background: rgba(12, 20, 28, 0.4);
+  padding: 4px 8px;
+  border-radius: var(--b-pill);
+  border: 1px solid var(--glass-border-subtle);
+  b-filter: var(--glass-blur);
+  gap: 4px;
+}
+
+.mode-tab-btn {
+  padding: 6px 14px;
+  border-radius: var(--b-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mode-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.mode-tab-btn.active {
+  background: rgba(45, 199, 199, 0.1);
+  color: var(--accent-teal);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-color: rgba(45, 199, 199, 0.2);
+}
+
+/* ==========================================================================
+   CONTROLS BAR: compact, uncluttered
+   ========================================================================== */
+.controls-bar {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--b-lg);
+  padding: 10px 16px;
+  b-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  margin-bottom: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.control-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-sub);
+}
+
+.control-title {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   AQI HERO: editorial, typography-first
+   ========================================================================== */
+.hero-atmosphere {
+  margin-bottom: 20px;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--text-main);
+  margin: 0 0 8px 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.hero-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--b-pill);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.hero-category span {
+  color: var(--accent-teal);
+}
+
+.hero-subtitle {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-sub);
+  margin: 0 0 20px 0;
+  max-width: 600px;
+}
+
+.hero-aqi-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.aqi-focal {
+  font-family: var(--font-display);
+  font-size: 88px;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.4);
+}
+
+.aqi-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.cpcb-category-badge {
+  padding: 4px 12px;
+  border-radius: var(--b-pill);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  padding: 5px 10px;
+}
+
+.cpcb-category-badge.cpcb-good { background: var(--cpcb-good); color: var(--cpcb-good); border: 1px solid var(--cpcb-good-border); }
+.cpcb-category-badge.cpcb-satisfactory { background: var(--cpcb-satisfactory); color: var(--cpcb-satisfactory); border: 1px solid var(--cpcb-satisfactory-border); }
+.cpcb-category-badge.cpcb-moderate { background: var(--cpcb-moderate); color: var(--cpcb-moderate); border: 1px solid var(--cpcb-moderate-border); }
+.cpcb-category-badge.cpcb-poor { background: var(--cpcb-poor); color: var(--cpcb-poor); border: 1px solid var(--cpcb-poor-border); }
+.cpcb-category-badge.cpcb-very-poor { background: var(--cpcb-very-poor); color: var(--cpcb-very-poor); border: 1px solid var(--cpcb-very-poor-border); }
+.cpcb-category-badge.cpcb-severe { background: var(--cpcb-severe); color: var(--cpcb-severe); border: 1px solid var(--cpcb-severe-border); }
+
+/* ==========================================================================
+   CHART: refined, integrated
+   ========================================================================== */
+.hero-chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  margin-top: auto;
+  background: transparent;
+}
+
+canvas#forecastWaveCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--glass-border-subtle);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.chart-legend-pills {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.legend-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+b-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* Simplified, refined wave path */
+.wave-path {
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.wave-actual { stroke: var(--accent-teal); stroke-width: 2.5; fill: none; }
+.wave-predicted { stroke: #facc15; stroke-width: 2; fill: none; stroke-dasharray: 4 2; }
+.wave-persistence { stroke: var(--text-dim); stroke-width: 1.5; fill: none; stroke-dasharray: 3 3; }
+
+/* Subtle area fill under actual wave */
+.area-actual {
+  fill: rgba(45, 199, 199, 0.08);
+}
+
+/* Grid lines – quiet, not dominant */
+.grid-line {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+}
+
+.grid-line.minor {
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 0.5;
+}
+
+/* Axis labels – small, subtle */
+.axis-label {
+  fill: var(--text-dim);
+  font-size: 9px;
+}
+
+/* Active day beacon */
+.day-beacon {
+  stroke: rgba(45, 199, 199, 0.2);
+  stroke-width: 2;
+  stroke-dasharray: 4 2;
+}
+
+/* Tooltip */
+.wave-tooltip {
+  position: absolute;
+  background: rgba(10, 18, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-main);
+  min-width: 140px;
+  z-index: 100;
+  backdrop left: 0;
+  top: calc(100% + 8px);
+}
+
+/* ==========================================================================
+   SIDEBAR: FEWER, CAREFULLY COMPOSED PANELS
+   ========================================================================== */
+.sidebar-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+}
+
+/* Weather Panel – compact, integrated */
+.weather-panel {
+  padding: 20px 22px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--b-lg);
+  b-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  margin-bottom: 12px;
+}
+
+.weather-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--glass-border-subtle);
+}
+
+.weather-location {
+  font-size: 12px;
+  color: var(--text-sub);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.weather-temp {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.weather-cond {
+  font-size: 13px;
+  color: var(--text-sub);
+  margin-top: 4px;
+}
+
+.weather-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.weather-metric {
+  text-align: center;
+  padding: 6px 0;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+}
+
+.metric-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Comparison panel – integrated, not card-heavy */
+.comparison {
+  padding: 18px 22px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--b-lg);
+  b-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  margin-bottom: 12px;
+}
+
+.comparison .card-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.comparison .card-desc {
+  font-size: 11px;
+  color: var(--text-sub);
+  margin: 0 0 16px 0;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--glass-border-subtle);
+  text-align: left;
+}
+
+.comparison-table th {
+  color: var(--text-sub);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--glass-border-subtle);
+}
+
+.comp-label {
+  color: var(--text-sub);
+  font-size: 11px;
+}
+
+.comp-main {
+  color: var(--text-main);
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+
+.comp-sub {
+  color: var(--text-dim);
+  font-size: 9px;
+}
+
+.comp-right {
+  color: var(--accent-teal);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Delta badge */
+.badge-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--b-pill);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.badge-delta.success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.badge-delta.neutral {
+  background: rgba(254, 202, 87, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(254, 202, 87, 0.3);
+}
+
+/* ==========================================================================
+   POLLUTANTS: restrained, inline
+   ========================================================================== */
+.pollutants {
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--b-lg);
+  b-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+
+.pollutants .card-title {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 10px;
+  display: block;
+}
+
+.pollutants-flex-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pollutant-capsule {
+  background: rgba(10, 18, 26, 0.5);
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: var(--b-md);
+  padding: 6px 8px;
+  text-align: center;
+  transition: border-color 0.2s ease;
+}
+
+.pollutant-capsule:hover {
+  border-color: var(--glass-border);
+}
+
+.capsule-sym {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.capsule-num {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.capsule-label {
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+/* ==========================================================================
+   PROVENANCE: minimal
+   ========================================================================== */
+.disclaimer-banner {
+  padding: 10px 16px;
+  background: rgba(10, 16, 22, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--b-md);
+  font-size: 11px;
+  color: var(--text-sub);
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.disclaimer-banner strong {
+  color: var(--accent-teal);
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .main-workspace {
+    padding: 16px;
+  }
+  .nav-rail {
+    width: 100%;
+    height: 56px;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    flex-direction: row;
+    padding: 0 16px;
+    z-index: 99;
+  }
+  .rail-b, .rail-bottom { display: none; }
+  .rail-menu {
+    flex-direction: row;
+    justify-content: space-around;
+    width: auto;
+  }
+  .main-workspace {
+    padding: 16px 16px 80px 16px;
+  }
+  .hero-headline {
+    font-size: 36px;
+  }
+  .aqi-focal {
+    font-size: 64px;
+  }
+  .pollutants-flex-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  .nav-rail {
+    width: 100%;
+    height: 56px;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    flex-direction: row;
+    padding: 0 16px;
+    z-index: 99;
+  }
+  .rail-b, .rail-bottom { display: none; }
+  .rail-menu {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+  .main-workspace {
+    padding: 16px 16px 80px 16px;
+  }
+  .hero-headline {
+    font-size: 28px;
+  }
+  .aqi-focal {
+    font-size: 48px;
+  }
+  .pollutants-flex-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .weather-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,0 +1,33 @@
+# Deployment repo: Delhi AQI Prediction
+# This repo is meant to be its own self-contained project, not a subtree of a
+# user home directory. Exclude anything outside this project folder so nothing
+# from the enclosing machine environment is ever staged or pushed.
+
+# If this folder was previously untracked inside a parent repo, the parent may
+# still try to absorb sibling paths. The entries below keep the project repo
+# self-contained by ignoring any such sibling-level artifacts relative to this
+# project root. These paths are expressed relative to this project folder, so
+# they quietly match nothing on a clean checkout and are only active where
+# relevant.
+../
+..?/
+../.*
+../*
+
+# Concrete local exclusions intended for this project
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+frontend/node_modules/
+frontend/dist/
+app/static/ui/
+app/cache/weather_cache.json
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

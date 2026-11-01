@@ -1,0 +1,29 @@
+# Delhi AQI Prediction — Render blueprint
+# One Web Service: FastAPI backend serves the built React UI.
+# The frontend build output is produced during the build step; it is deliberately
+# not committed, so the build step must run the frontend build every deploy.
+
+services:
+  - type: web
+    name: delhi-aqi-prediction
+    env: python
+    region: oregon
+    plan: free
+    rootDir: /
+    buildCommand: |
+      # Install frontend toolchain and build the React UI into app/static/ui/
+      cd frontend
+      npm ci
+      npm run build
+      cd ..
+      # Install Python dependencies for the FastAPI backend
+      python -m venv .venv
+      .venv/bin/pip install --upgrade pip
+      .venv/bin/pip install -r requirements.txt
+    startCommand: |
+      .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: DATA_GOV_IN_API_KEY
+        sync: false

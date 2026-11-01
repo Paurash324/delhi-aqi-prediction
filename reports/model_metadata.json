@@ -1,0 +1,24 @@
+{
+  "purpose": "BTech lab project deployment candidate",
+  "target": "CPCB-method-derived citywide daily AQI estimate (not an official CPCB bulletin value)",
+  "target_definition": "Daily mean of eligible hourly citywide station AQI estimates reconstructed from pollutant concentrations with CPCB-style breakpoints and data sufficiency rules.",
+  "source_time_zone": "Source data dictionary describes recent 15-minute pollutant timestamps as UTC; recent data was converted to Asia/Kolkata before daily aggregation.",
+  "training_data_period": "2024-01-01 through 2025-12-31",
+  "evaluation_split": {
+    "train": "target dates 2024-01-01 through 2024-12-31",
+    "validation": "target dates 2025-01-01 through 2025-06-30",
+    "final_test": "target dates 2025-07-01 through 2025-12-31"
+  },
+  "results": {
+    "1_day": {"selected_model": "GradientBoosting", "test_MAE": 15.7761, "persistence_MAE": 21.4978, "test_RMSE": 21.8863, "persistence_RMSE": 29.6939},
+    "2_day": {"selected_model": "RandomForest", "test_MAE": 29.0313, "persistence_MAE": 30.7182, "test_RMSE": 39.9564, "persistence_RMSE": 42.6480},
+    "3_day": {"selected_model": "HistGradientBoosting", "test_MAE": 39.0971, "persistence_MAE": 33.4292, "test_RMSE": 54.1994, "persistence_RMSE": 47.6487, "decision": "Use persistence fallback"}
+  },
+  "limitations": [
+    "Recent target is a derived estimate, not an official CPCB daily bulletin AQI.",
+    "Reported historical hourly AQI covers 2017-2023, while recent pollutant files cover 2024-2025; the source archive has no same-time overlap for direct independent hourly validation.",
+    "Current archive ends 2025-12-31; predictions in 2026 require refreshed compatible input history.",
+    "Use only input daily features with the same units and aggregation as training."
+  ],
+  "day3_policy": "Persistence fallback; the fitted 3-day experimental model is not included in the inference bundle because it did not beat persistence on the final test."
+}

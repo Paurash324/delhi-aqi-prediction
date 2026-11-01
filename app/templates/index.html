@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Delhi CPCB-Method-Derived Air Quality Index Forecast and Historical Replay Prototype">
+  <title>Delhi AQI Forecast — Cinematic Atmospheric Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+  <!-- Genuine Delhi atmospheric photograph, always visible as the photographic base -->
+  <div class="bg-photo-base" aria-hidden="true"></div>
+
+  <!-- Atmospheric tint layers that crossfade over the photo as AQI changes -->
+  <div class="bg-layer-container" id="bgLayerContainer" aria-hidden="true">
+    <div class="bg-layer bg-heavy-smog active" id="layerHeavySmog"></div>
+    <div class="bg-layer bg-hazy-sky" id="layerHazySky"></div>
+    <div class="bg-layer bg-clear-sky" id="layerClearSky"></div>
+  </div>
+  <div class="bg-overlay-scrim" aria-hidden="true"></div>
+
+  <div class="app-container">
+    <!-- Narrow Floating Left Navigation Rail -->
+    <nav class="nav-rail" aria-label="Main Navigation">
+      <div class="rail-brand" id="railBrandIcon" title="Delhi AQI Forecaster" aria-label="Brand Home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"></path>
+          <path d="M9.6 4.6A2 2 0 1 1 11 8H2"></path>
+          <path d="M12.6 19.4A2 2 0 1 0 14 16H2"></path>
+        </svg>
+      </div>
+
+      <div class="rail-menu">
+        <button class="rail-btn active" data-nav="replay" id="navBtnReplay" title="Historical Replay" aria-label="Historical Replay Mode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span class="tooltip">Historical Replay</span>
+        </button>
+
+        <button class="rail-btn" data-nav="live" id="navBtnLive" title="Live Weather & Status" aria-label="Live Weather Mode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v2"></path>
+            <path d="m4.93 4.93 1.41 1.41"></path>
+            <path d="M20 12h2"></path>
+            <path d="m19.07 4.93-1.41 1.41"></path>
+            <path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"></path>
+            <path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"></path>
+          </svg>
+          <span class="tooltip">Live Weather & 2026 Status</span>
+        </button>
+
+        <button class="rail-btn" data-nav="metrics" id="navBtnMetrics" title="Model Evaluation" aria-label="Evaluation Metrics">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <span class="tooltip">Model Metrics</span>
+        </button>
+      </div>
+
+      <div class="rail-bottom">
+        <button class="rail-btn" data-nav="viva" id="openVivaDrawerBtn" title="Student Viva Guide" aria-label="Open Viva Guide">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path>
+            <path d="M6 6h10"></path>
+            <path d="M6 10h10"></path>
+          </svg>
+          <span class="tooltip">Student Viva Guide</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Welcoming Header -->
+      <header class="app-header">
+        <div>
+          <div class="welcome-lead">Air Quality Intelligence &bull; College Prototype</div>
+          <h1 class="location-title">
+            Delhi, India
+            <span class="location-badge-dot" title="Fixed location: Delhi NCT"></span>
+          </h1>
+        </div>
+
+        <div class="header-right">
+          <!-- Mode Switcher Tabs -->
+          <div class="mode-tabs" role="tablist">
+            <button class="mode-tab-btn active" data-mode="replay" role="tab" id="tabReplayBtn">
+              Historical Replay (2025 Holdout)
+            </button>
+            <button class="mode-tab-btn" data-mode="live" role="tab" id="tabLiveBtn">
+              Live Weather & 2026 Status
+            </button>
+            <button class="mode-tab-btn" data-mode="metrics" role="tab" id="tabMetricsBtn">
+              Model Evaluation
+            </button>
+          </div>
+
+          <!-- Provenance Disclaimer Pill -->
+          <button class="provenance-pill" id="headerDisclaimerPill" title="View dataset lineage & provenance">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            CPCB-Method-Derived AQI Estimate
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEW 1: HISTORICAL REPLAY MODE -->
+      <div id="viewReplay">
+        <!-- Uncluttered Controls Bar -->
+        <section class="controls-bar" aria-label="Replay Controls">
+          <div class="control-item">
+            <span class="control-title">Replay Date</span>
+            <div class="date-picker-wrap">
+              <input type="date" id="inputDate" value="2025-11-12" min="2025-07-01" max="2025-12-31" aria-label="Select Replay Date">
+              <span class="formatted-date-label" id="labelFormattedDate">12 Nov 2025</span>
+            </div>
+          </div>
+
+          <div class="control-item">
+            <span class="control-title">Forecast Horizon</span>
+            <div class="horizon-segment" role="group" aria-label="Select Forecast Horizon">
+              <button class="horizon-btn active" data-horizon="1" id="btnH1">1-Day (GBR)</button>
+              <button class="horizon-btn" data-horizon="2" id="btnH2">2-Day (RF)</button>
+              <button class="horizon-btn" data-horizon="3" id="btnH3">3-Day (Fallback)</button>
+            </div>
+          </div>
+
+          <div class="control-item" style="flex: 1; justify-content: flex-end;">
+            <span class="control-title">Notable Episodes:</span>
+            <div class="episode-chips" id="containerEpisodeChips">
+              <!-- Dynamically populated chips -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Cinematic 2-Column Grid -->
+        <div class="cinematic-grid">
+          <!-- Left Hero Stage: Atmospheric Condition & Wave Forecast -->
+          <article class="hero-atmosphere-panel">
+            <div>
+              <div class="hero-condition-lead" id="badgeEpisodeLead">
+                Historical Holdout Episode
+              </div>
+              <h2 class="hero-condition-headline" id="textConditionHeadline">
+                Severe Smog Overcast
+              </h2>
+              <p class="hero-condition-summary" id="textConditionSummary">
+                Nocturnal thermal inversion and calm surface winds trap particulates near ground level. Respiratory illness on prolonged exposure.
+              </p>
+
+              <!-- Focal AQI Display -->
+              <div class="hero-aqi-row">
+                <div class="aqi-focal-number" id="numFocalAqi">382</div>
+                <div class="aqi-meta-group">
+                  <div class="cpcb-category-badge cpcb-very-poor" id="badgeCpcbCategory">
+                    Very Poor
+                  </div>
+                  <div class="cpcb-scale-sub">Indian CPCB Scale (0 – 500)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Embedded Atmospheric Wave Forecast Line -->
+            <div class="hero-chart-wrapper">
+              <div class="chart-header-legend">
+                <span class="chart-title-tag">15-Day AQI Trend</span>
+                <div class="chart-legend-pills">
+                  <div class="legend-pill">
+                    <span class="legend-dot" style="background: #2dd4bf;"></span>
+                    <span>Derived Actual</span>
+                  </div>
+                  <div class="legend-pill">
+                    <span class="legend-dot" style="background: #facc15;"></span>
+                    <span>Model Predicted</span>
+                  </div>
+                  <div class="legend-pill">
+                    <span class="legend-dot" style="background: #94a3b8;"></span>
+                    <span>Persistence Baseline</span>
+                  </div>
+                </div>
+              </div>
+              <canvas id="forecastWaveCanvas" aria-label="Curved forecast wave chart"></canvas>
+            </div>
+          </article>
+
+          <!-- Right Sidebar: Fewer, Carefully Composed Panels -->
+          <aside class="sidebar-panels">
+            <!-- Weather Conditions Panel -->
+            <div class="glass-panel weather-glass-card">
+              <div class="weather-header-row">
+                <div>
+                  <div class="weather-location-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    Delhi NCT Station Meteorology
+                  </div>
+                  <div style="font-size: 13px; color: var(--text-sub); margin-top: 4px;" id="textWeatherCondDesc">
+                    Calm Stagnant Inversion
+                  </div>
+                </div>
+                <div class="weather-big-temp" id="textWeatherTemp">22°C</div>
+              </div>
+
+              <div class="weather-metrics-strip">
+                <div class="weather-metric-box">
+                  <div class="metric-box-val" id="textWeatherHumidity">68%</div>
+                  <div class="metric-box-label">Humidity (RH)</div>
+                </div>
+                <div class="weather-metric-box">
+                  <div class="metric-box-val" id="textWeatherWind">0.8 m/s</div>
+                  <div class="metric-box-label">Wind Speed</div>
+                </div>
+                <div class="weather-metric-box">
+                  <div class="metric-box-val" id="textWeatherRain">0.0 mm</div>
+                  <div class="metric-box-label">Precipitation</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Explicit Metrics Comparison Panel -->
+            <div class="glass-panel metrics-comparison-card">
+              <div class="card-title-row">
+                <h3>Prediction vs Baseline Comparison</h3>
+                <p>Evaluated on held-out 2025 H2 test split</p>
+              </div>
+
+              <div class="comparison-stack">
+                <div class="comparison-row">
+                  <div class="comp-text-left">
+                    <span class="comp-main-label">Model-predicted AQI</span>
+                    <span class="comp-sub-label" id="textSelectedModelName">Regressor: GradientBoosting</span>
+                  </div>
+                  <div class="comp-right-val" id="textValPredicted">382.5</div>
+                </div>
+
+                <div class="comparison-row">
+                  <div class="comp-text-left">
+                    <span class="comp-main-label">Derived citywide AQI estimate</span>
+                    <span class="comp-sub-label" id="textActualCatLabel">Target category: Very Poor</span>
+                  </div>
+                  <div class="comp-right-val" id="textValActual">369.8</div>
+                </div>
+
+                <div class="comparison-row">
+                  <div class="comp-text-left">
+                    <span class="comp-main-label">Persistence baseline</span>
+                    <span class="comp-sub-label">Day-before known AQI</span>
+                  </div>
+                  <div class="comp-right-val" id="textValPersistence">345.1</div>
+                </div>
+
+                <div class="comparison-row" style="background: rgba(18, 30, 36, 0.6);">
+                  <div class="comp-text-left">
+                    <span class="comp-main-label">Absolute prediction error</span>
+                    <span class="delta-status-pill success" id="badgeDeltaStatus">Model beats baseline by 12.0 pts</span>
+                  </div>
+                  <div class="comp-right-val" id="textValError" style="color: #4ade80;">±12.7</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <!-- Pollutant Concentrations Strip -->
+        <section class="pollutants-panel">
+          <div class="card-title-row">
+            <h3>Station Pollutant Concentrations (Daily Mean)</h3>
+            <p>Benchmarked against Central Pollution Control Board (CPCB) NAAQS 24-hr standards</p>
+          </div>
+          <div class="pollutants-flex-row" id="containerPollutantsRow">
+            <!-- Dynamically populated capsules for PM2.5, PM10, NO2, SO2, CO, Ozone, NH3 -->
+          </div>
+        </section>
+
+        <!-- Mandatory Provenance Disclaimer Banner -->
+        <div class="disclaimer-banner">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; color:var(--accent-teal);">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <div>
+            <strong>CPCB-method-derived AQI estimate:</strong>
+            This reconstructed citywide daily AQI was calculated using a CPCB-style sub-index calculation from station monitors and data availability rules. It has not been independently verified against official published daily Delhi CPCB bulletins.
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: LIVE WEATHER & 2026 STATUS MODE -->
+      <div id="viewLive" style="display: none;">
+        <div id="containerLiveStatus"></div>
+        <div id="containerLiveWeather"></div>
+      </div>
+
+      <!-- VIEW 3: MODEL EVALUATION & FROZEN TEST METRICS -->
+      <div id="viewMetrics" style="display: none;">
+        <div id="containerMetricsTable"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Slide-out Student Viva Preparation Drawer -->
+  <div class="drawer-backdrop" id="modalVivaDrawer" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <div>
+          <h2 style="margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 700;">Student Viva Defense Guide</h2>
+          <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">BTech CSE (AI/ML) Major Project Key Concepts</p>
+        </div>
+        <button class="rail-btn" id="closeVivaDrawerBtn" aria-label="Close Guide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="viva-concept-card">
+        <h3>1. Target Definition & CPCB Methodology</h3>
+        <p>
+          The target is the <strong>CPCB-method-derived citywide daily AQI estimate</strong>. Individual station hourly sub-indices are calculated using piecewise linear interpolation across standard Indian CPCB breakpoints for 7 criteria pollutants (PM2.5, PM10, NO2, SO2, CO, Ozone, NH3), requiring at least 3 pollutants with one being either PM2.5 or PM10. Daily mean is derived from eligible hourly averages across 37 stations in Delhi.
+        </p>
+      </div>
+
+      <div class="viva-concept-card">
+        <h3>2. Out-of-Time Chronological Split (No Data Leakage)</h3>
+        <p>
+          Random k-fold cross-validation is invalid for time series due to look-ahead data leakage. We implemented a strict chronological split:
+          <br>&bull; <strong>Train Set:</strong> 2024-01-01 to 2024-12-31 (365 days)
+          <br>&bull; <strong>Validation Set:</strong> 2025-01-01 to 2025-06-30 (181 days for model selection)
+          <br>&bull; <strong>Final Test Set:</strong> 2025-07-01 to 2025-12-31 (184 held-out days)
+        </p>
+      </div>
+
+      <div class="viva-concept-card">
+        <h3>3. Why Day 1 Beats Baseline & Day 3 Uses Fallback</h3>
+        <p>
+          &bull; <strong>1-Day Ahead:</strong> GradientBoosting achieved <strong>MAE 15.78</strong> vs Persistence MAE 21.50 (a 26.6% error reduction). The regressor effectively uses 7-day rolling mean, cyclic seasonal encoding (sin/cos of day-of-year), and meteorology.
+          <br>&bull; <strong>2-Day Ahead:</strong> RandomForest achieved <strong>MAE 29.03</strong> vs Persistence MAE 30.72. Marginal improvement.
+          <br>&bull; <strong>3-Day Ahead:</strong> HistGradientBoosting scored <strong>MAE 39.10</strong>, losing to Persistence MAE 33.43! Instead of deploying a worse model, we established an honest scientific fallback policy: persistence baseline is used for horizon 3.
+        </p>
+      </div>
+
+      <div class="viva-concept-card">
+        <h3>4. Why Live 2026 Predictions Show "Unavailable"</h3>
+        <p>
+          The model requires 7 days of continuous ground-station derived AQI lags and station-averaged pollutant features up to the forecast origin. The offline archive ends 2025-12-31. Substituting Open-Meteo European AQI or US AQI is scientifically invalid because their sub-index formulas, breakpoints, and sensor sources differ radically from Indian CPCB standards. Reporting "Unavailable" is the honest engineering choice.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
