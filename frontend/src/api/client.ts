@@ -305,8 +305,8 @@ class DelhiAqiApiClient {
     const raw = await this.request<AnyRecord>('/api/live/weather');
     const f = raw.tomorrow_forecast || raw.tomorrowForecast || {};
     const current = raw.current || {};
-    // The provider returns one daily row per day. Read them all: reading only
-    // `tomorrow_forecast` is what made every forecast day show one temperature.
+    const isUnavailable = raw.success === false || raw.available === false || raw.status === 'unavailable' || sourceIndicatesUnavailable(raw);
+
     const timelineRows: AnyRecord[] = Array.isArray(raw.daily_timeline)
       ? raw.daily_timeline
       : Array.isArray(raw.dailyTimeline)
@@ -315,73 +315,91 @@ class DelhiAqiApiClient {
     const baselineMs = timelineRows.length && timelineRows[0]?.date
       ? Date.parse(`${timelineRows[0].date}T00:00:00Z`)
       : NaN;
-    const dailyForecast: WeatherForecastDay[] = timelineRows
-      .map((row, index): WeatherForecastDay | null => {
-        const date = row?.date ? String(row.date) : null;
-        if (!date) return null;
-        const rowMs = Date.parse(`${date}T00:00:00Z`);
-        const leadDays =
-          Number.isNaN(baselineMs) || Number.isNaN(rowMs)
-            ? index
-            : Math.round((rowMs - baselineMs) / 86_400_000);
-        const dayMax = numberOrNull(firstDefined(row.temp_max, row.tempMax));
-        const windDeg = numberOrNull(firstDefined(row.wind_direction_deg, row.wind_dir_deg));
-        return {
-          date,
-          leadDays,
-          tempC: dayMax,
-          tempMaxC: dayMax,
-          tempMinC: numberOrNull(firstDefined(row.temp_min, row.tempMin)),
-          humidityPct: numberOrNull(firstDefined(row.humidity, row.humidity_pct, row.humidityPct)),
-          windKmh: numberOrNull(firstDefined(row.wind_speed_kmh, row.windSpeedKmh)),
-          windDeg,
-          windDir: compassFromDegrees(windDeg),
-          feelsLikeC: numberOrNull(firstDefined(row.feels_like_max, row.apparent_temperature_max)),
-          precipMm: numberOrNull(firstDefined(row.precipitation_mm, row.precipitationMm, row.precip_mm)),
-          condition: String(firstDefined(row.weather_desc, row.weatherDesc, 'Forecast condition not reported')),
-          boundaryLayerHeightM: null,
-        };
-      })
-      .filter((day): day is WeatherForecastDay => day !== null);
+    let dailyForecast: WeatherForecastDay[] = [];
 
-    const hasTomorrow = numberOrNull(firstDefined(f.temp_max, f.tempMax, f.temperature_c)) !== null;
+    if (!isUnavailable && timelineRows.length > 0) {
+      dailyForecast = timelineRows
+        .map((row, index): WeatherForecastDay | null => {
+          const date = row?.date ? String(row.date) : null;
+          if (!date) return null;
+          const rowMs = Date.parse(`${date}T00:00:00Z`);
+          const leadDays =
+            Number.isNaN(baselineMs) || Number.isNaN(rowMs)
+              ? index
+              : Math.round((rowMs - baselineMs) / 86_400_000);
+          const dayMax = numberOrNull(firstDefined(row.temp_max, row.tempMax));
+          const windDeg = numberOrNull(firstDefined(row.wind_direction_deg, row.wind_dir_deg));
+          return {
+            date,
+            leadDays,
+            tempC: dayMax,
+            tempMaxC: dayMax,
+            tempMinC: numberOrNull(firstDefined(row.temp_min, row.tempMin)),
+            humidityPct: numberOrNull(firstDefined(row.humidity, row.humidity_pct, row.humidityPct)),
+            windKmh: numberOrNull(firstDefined(row.wind_speed_kmh, row.windSpeedKmh)),
+            windDeg,
+            windDir: compassFromDegrees(windDeg),
+            feelsLikeC: numberOrNull(firstDefined(row.feels_like_max, row.apparent_temperature_max)),
+            precipMm: numberOrNull(firstDefined(row.precipitation_mm, row.precipitationMm, row.precip_mm)),
+            condition: String(firstDefined(row.weather_desc, row.weatherDesc, 'Forecast condition not reported')),
+            boundaryLayerHeightM: null,
+          };
+        })
+        .filter((day): day is WeatherForecastDay => day !== null);
+    }
+
+    const hasTomorrow = !isUnavailable && numberOrNull(firstDefined(f.temp_max, f.tempMax, f.temperature_c)) !== null;
     const tempMax = numberOrNull(firstDefined(f.temp_max, f.tempMax));
     const tempMin = numberOrNull(firstDefined(f.temp_min, f.tempMin));
-    const weather: WeatherMetrics = hasTomorrow ? {
-      tempC: tempMax,
-      tempMaxC: tempMax,
-      tempMinC: tempMin,
-      humidityPct: numberOrNull(firstDefined(f.humidity, f.humidity_pct)),
-      windKmh: numberOrNull(firstDefined(f.wind_speed_kmh, f.windKmh)),
-      windDeg: numberOrNull(firstDefined(f.wind_direction_deg, f.wind_direction_10m_dominant)),
-      windDir: compassFromDegrees(numberOrNull(firstDefined(f.wind_direction_deg, f.wind_direction_10m_dominant))),
-      feelsLikeC: numberOrNull(firstDefined(f.feels_like_max, f.apparent_temperature_max)),
-      pressureHpa: numberOrNull(firstDefined(current.pressure_hpa, current.surface_pressure)),
-      precipMm: numberOrNull(firstDefined(f.precipitation_mm, f.precipitationMm, f.precip_mm)),
-      condition: String(firstDefined(f.weather_desc, f.weatherDesc, 'Forecast condition not reported')),
-      boundaryLayerHeightM: null,
-    } : {
-      tempC: numberOrNull(firstDefined(current.temperature_c, current.tempC)),
-      humidityPct: numberOrNull(firstDefined(current.humidity_pct, current.humidityPct)),
-      windKmh: numberOrNull(firstDefined(current.wind_speed_kmh, current.windKmh)),
-      windDeg: numberOrNull(firstDefined(current.wind_direction_deg, current.wind_dir_deg)),
-      windDir: compassFromDegrees(numberOrNull(firstDefined(current.wind_direction_deg, current.wind_dir_deg))),
-      feelsLikeC: numberOrNull(firstDefined(current.feels_like_c, current.apparent_temperature)),
-      pressureHpa: numberOrNull(firstDefined(current.pressure_hpa, current.surface_pressure)),
-      precipMm: numberOrNull(firstDefined(f.precipitation_mm, f.precip_mm)),
-      condition: String(firstDefined(current.weather_desc, current.condition, 'Current weather condition not reported')),
-      boundaryLayerHeightM: null,
-    };
-    const source = String(firstDefined(raw.source, 'Weather source not reported'));
-    const warning = raw.warning ? String(raw.warning) : null;
+    const weather: WeatherMetrics = hasTomorrow
+      ? {
+          tempC: tempMax,
+          tempMaxC: tempMax,
+          tempMinC: tempMin,
+          humidityPct: numberOrNull(firstDefined(f.humidity, f.humidity_pct)),
+          windKmh: numberOrNull(firstDefined(f.wind_speed_kmh, f.windKmh)),
+          windDeg: numberOrNull(firstDefined(f.wind_direction_deg, f.wind_direction_10m_dominant)),
+          windDir: compassFromDegrees(numberOrNull(firstDefined(f.wind_direction_deg, f.wind_direction_10m_dominant))),
+          feelsLikeC: numberOrNull(firstDefined(f.feels_like_max, f.apparent_temperature_max)),
+          pressureHpa: numberOrNull(firstDefined(current.pressure_hpa, current.surface_pressure)),
+          precipMm: numberOrNull(firstDefined(f.precipitation_mm, f.precipitationMm, f.precip_mm)),
+          condition: String(firstDefined(f.weather_desc, f.weatherDesc, 'Forecast condition not reported')),
+          boundaryLayerHeightM: null,
+        }
+      : isUnavailable || !current || Object.keys(current).length === 0
+        ? emptyWeather('Weather forecast unavailable')
+        : {
+            tempC: numberOrNull(firstDefined(current.temperature_c, current.tempC)),
+            humidityPct: numberOrNull(firstDefined(current.humidity_pct, current.humidityPct)),
+            windKmh: numberOrNull(firstDefined(current.wind_speed_kmh, current.windKmh)),
+            windDeg: numberOrNull(firstDefined(current.wind_direction_deg, current.wind_dir_deg)),
+            windDir: compassFromDegrees(numberOrNull(firstDefined(current.wind_direction_deg, current.wind_dir_deg))),
+            feelsLikeC: numberOrNull(firstDefined(current.feels_like_c, current.apparent_temperature)),
+            pressureHpa: numberOrNull(firstDefined(current.pressure_hpa, current.surface_pressure)),
+            precipMm: numberOrNull(firstDefined(f.precipitation_mm, f.precip_mm)),
+            condition: String(firstDefined(current.weather_desc, current.condition, 'Weather forecast unavailable')),
+            boundaryLayerHeightM: null,
+          };
+
+    const source = String(firstDefined(raw.source, 'Weather forecast unavailable'));
+    const warning = raw.warning ? String(raw.warning) : isUnavailable ? 'Weather forecast unavailable' : null;
+    const isCached = Boolean(raw.cached) && !isUnavailable;
+    const weatherCondition = isUnavailable
+      ? 'Weather forecast unavailable'
+      : source.toLowerCase().includes('offline') || source.toLowerCase().includes('fallback') || source.toLowerCase().includes('simulated')
+        ? `Sample fallback: ${weather.condition}`
+        : weather.condition;
+
     return {
       location: String(firstDefined(raw.city, raw.location, 'Delhi, India')),
-      forecastFor: String(firstDefined(f.date, raw.forecast_for, 'Tomorrow')),
-      updatedAt: String(firstDefined(raw.timestamp, raw.updated_at, '')) || undefined,
-      source, cached: Boolean(raw.cached), warning,
+      forecastFor: isUnavailable ? 'Unavailable' : String(firstDefined(f.date, raw.forecast_for, 'Tomorrow')),
+      updatedAt: isUnavailable ? undefined : String(firstDefined(raw.timestamp, raw.updated_at, '')) || undefined,
+      source,
+      cached: isCached,
+      warning,
       weather: {
         ...weather,
-        condition: source.toLowerCase().includes('offline') ? `Sample fallback: ${weather.condition}` : weather.condition,
+        condition: weatherCondition,
       },
       dailyForecast,
     };
@@ -507,3 +525,9 @@ class DelhiAqiApiClient {
 }
 
 export const apiClient = new DelhiAqiApiClient();
+
+
+function sourceIndicatesUnavailable(raw: AnyRecord): boolean {
+  const source = String(raw.source || '').toLowerCase();
+  return source.includes('unavailable');
+}

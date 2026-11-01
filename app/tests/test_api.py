@@ -91,3 +91,50 @@ def test_predict_endpoint_historical_date():
     data = response.json()
     assert data["success"] is True
     assert "result" in data
+
+
+def test_live_weather_returns_distinct_daily_forecast():
+    response = client.get("/api/live/weather")
+    assert response.status_code == 200
+    data = response.json()
+    # If real data is available it must be distinct; if unavailable we must not fabricate values
+    if data.get("success") is True and data.get("available") is not False and data.get("status") != "unavailable":
+        timeline = data.get("daily_timeline") or []
+        assert isinstance(timeline, list)
+        if len(timeline) >= 2:
+            signatures = []
+            for day in timeline[:3]:
+                signatures.append((
+                    day.get("date"),
+                    day.get("temp_max"),
+                    day.get("temp_min"),
+                    day.get("humidity"),
+                    day.get("wind_speed_kmh"),
+                    day.get("weather_desc"),
+                ))
+            # At least two different signatures or values differ
+            assert len(set(signatures)) >= 2 or any(
+                signatures[0][i] != signatures[1][i] if len(signatures) > 1 else False for i in range(1, 6)
+            )
+    else:
+        # Unavailable state must not present fabricated forecast values
+        timeline = data.get("daily_timeline") or []
+        assert timeline == []
+        assert data.get("current") is None or data.get("current") == {}
+
+
+def test_live_weather_unavailable_not_presented_as_real_forecast():
+    # Simulate unavailable state by ensuring we don't fabricate values
+    response = client.get("/api/live/weather")
+    assert response.status_code == 200
+    data = response.json()
+    if data.get("success") is False or data.get("available") is False or data.get("status") == "unavailable":
+        assert data.get("daily_timeline") == [] or data.get("daily_timeline") is None
+        # Must not have fabricated distinct forecast entries
+        assert data.get("current") is None or isinstance(data.get("current"), dict) and len(data.get("current") or {}) == 0
+        assert "unavailable" in str(data.get("source", "")).lower() or "unavailable" in str(data.get("warning", "")).lower()
+    else:
+        # If live data exists, it must be from a real source and have timeline
+        timeline = data.get("daily_timeline") or []
+        assert isinstance(timeline, list)
+        assert len(timeline) >= 1

@@ -68,7 +68,9 @@ class WeatherService:
         """Fetch weather forecast for Delhi, using Open-Meteo with caching."""
         cached = self._read_cache()
         if cached and not cached.get("_is_stale", False):
-            return cached
+            data = dict(cached)
+            data["cached"] = True
+            return data
 
         params = {
             "latitude": settings.LATITUDE,
@@ -92,14 +94,16 @@ class WeatherService:
                     parsed = self._parse_open_meteo_response(raw)
                     self._write_cache(parsed)
                     return parsed
-        except Exception as e:
+        except Exception:
             # Network failure or timeout: use stale cache if available
             if cached:
-                cached["cached"] = True
-                cached["warning"] = "Network offline or slow; serving local cached forecast."
-                return cached
+                cached_data = dict(cached)
+                cached_data["cached"] = True
+                cached_data["warning"] = cached_data.get("warning") or "Network offline or slow; serving cached forecast."
+                cached_data["source"] = cached_data.get("source") or "Cached weather forecast"
+                return cached_data
         
-        # If no cache exists and network failed, provide safe offline fallback
+        # If no cache exists and network failed, do not fabricate values
         return self._offline_fallback()
 
     def _parse_open_meteo_response(self, raw: Dict[str, Any]) -> Dict[str, Any]:
@@ -161,37 +165,20 @@ class WeatherService:
         }
 
     def _offline_fallback(self) -> Dict[str, Any]:
-        """Provide a static demonstration fallback when network is unavailable."""
+        """Return unavailable weather state without fabricating forecast values."""
+        now = datetime.now(timezone.utc)
         return {
-            "success": True,
-            "source": "Offline Weather Fallback (Simulated Delhi Typical Conditions)",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "success": False,
+            "available": False,
+            "status": "unavailable",
+            "source": "Weather forecast unavailable",
+            "timestamp": now.isoformat(),
             "city": settings.CITY_NAME,
-            "current": {
-                "temperature_c": 28.5,
-                "humidity_pct": 58,
-                "wind_speed_kmh": 8.0,
-                # Deliberately absent: these values are not part of the
-                # simulated baseline and must not be invented.
-                "wind_direction_deg": None,
-                "feels_like_c": None,
-                "pressure_hpa": None,
-                "weather_code": 1,
-                "weather_desc": "Mainly Clear"
-            },
-            "tomorrow_forecast": {
-                "date": "Tomorrow",
-                "temp_max": 30.0,
-                "temp_min": 19.5,
-                "humidity": 55,
-                "precipitation_mm": 0.0,
-                "wind_speed_kmh": 7.5,
-                "weather_code": 1,
-                "weather_desc": "Mainly Clear"
-            },
+            "current": None,
+            "tomorrow_forecast": {},
             "daily_timeline": [],
-            "cached": True,
-            "warning": "Live weather API unreachable. Showing offline typical baseline."
+            "cached": False,
+            "warning": "Live weather forecast unavailable. No cached data found."
         }
 
 weather_service = WeatherService()
