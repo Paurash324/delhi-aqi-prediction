@@ -83,7 +83,7 @@ class WeatherService:
             # the dashboard shows. Without this the provider's default horizon is
             # used and the per-day series is not guaranteed to cover t+1..t+3.
             "forecast_days": 4,
-            "timezone": settings.TIMEZONE
+            "timezone": settings.TIMEZONE,
         }
 
         try:
@@ -94,16 +94,39 @@ class WeatherService:
                     parsed = self._parse_open_meteo_response(raw)
                     self._write_cache(parsed)
                     return parsed
+                # Non-200 response is an upstream failure - try to use cache if available
+                if cached:
+                    cached_data = dict(cached)
+                    cached_data["cached"] = True
+                    cached_data["_is_stale"] = True
+                    cached_data["warning"] = (
+                        cached_data.get("warning")
+                        or f"Upstream weather API returned HTTP {res.status_code}; serving cached forecast."
+                    )
+                    src = cached_data.get("source") or ""
+                    if "stale" not in str(src).lower() and "cached" not in str(src).lower():
+                        cached_data["source"] = f"Cached weather forecast (stale) - {src}".strip()
+                    else:
+                        cached_data["source"] = src
+                    return cached_data
         except Exception:
             # Network failure or timeout: use stale cache if available
             if cached:
                 cached_data = dict(cached)
                 cached_data["cached"] = True
-                cached_data["warning"] = cached_data.get("warning") or "Network offline or slow; serving cached forecast."
-                cached_data["source"] = cached_data.get("source") or "Cached weather forecast"
+                cached_data["_is_stale"] = True
+                cached_data["warning"] = (
+                    cached_data.get("warning")
+                    or "Network offline or slow; serving cached forecast."
+                )
+                src = cached_data.get("source") or ""
+                if "stale" not in str(src).lower() and "cached" not in str(src).lower():
+                    cached_data["source"] = f"Cached weather forecast (stale) - {src}".strip()
+                else:
+                    cached_data["source"] = src
                 return cached_data
-        
-        # If no cache exists and network failed, do not fabricate values
+
+        # If no cache exists and network/upstream failed, do not fabricate values
         return self._offline_fallback()
 
     def _parse_open_meteo_response(self, raw: Dict[str, Any]) -> Dict[str, Any]:
