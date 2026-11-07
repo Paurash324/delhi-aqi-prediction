@@ -40,13 +40,7 @@ The production build is written to `app/static/ui/`. The FastAPI backend serves 
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open **http://127.0.0.1:8000/**.
-
-### 3. Useful checks
-
-- `http://127.0.0.1:8000/`
-- `http://127.0.0.1:8000/health`
-- `http://127.0.0.1:8000/docs`
+Open **https://delhi-aqi-prediction-i78z.onrender.com/**.
 
 ## Running tests
 
