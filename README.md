@@ -1,101 +1,271 @@
-# Delhi AQI Prediction
+# 🌫️ Delhi Air Intelligence — AQI Prediction & Analysis
 
-A React + Vite frontend served by the existing FastAPI backend. It provides historical replay of held-out 2025 AQI estimates, model-versus-baseline comparisons, a weather/live-compatibility view, and an external CAMS-derived modelled AQI outlook.
+<p align="center">
+  <strong>An AI/ML-powered air quality analysis and forecasting platform for Delhi, India.</strong>
+</p>
 
-> **Research disclosure:** AQI targets in this project are CPCB-method-derived citywide estimates. They have not been independently verified against official published daily Delhi CPCB bulletins. This is an educational prototype, not an official CPCB service.
+<p align="center">
+  <a href="https://delhi-aqi-prediction-i78z.onrender.com/">
+    <img src="https://img.shields.io/badge/Live%20Demo-Visit%20Website-2ea44f?style=for-the-badge" alt="Live Demo">
+  </a>
+  <img src="https://img.shields.io/badge/Python-FastAPI-blue?style=for-the-badge" alt="Python FastAPI">
+  <img src="https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge" alt="React">
+  <img src="https://img.shields.io/badge/Machine%20Learning-Scikit--learn-orange?style=for-the-badge" alt="Machine Learning">
+</p>
 
-## What is in this repo
+---
 
-- `app/` — FastAPI backend, routes, services, static assets, and tests
-- `frontend/` — React + Vite dashboard source
-- `models/` — trained model bundle used by the backend
-- `data/` — historical daily data used by the backend
-- `reports/` — frozen model metrics and metadata
-- `requirements.txt` — Python dependencies
-- `render.yaml` — Render deployment configuration (see below)
+## 📌 Overview
 
-## Local quick start (Windows)
+**Delhi Air Intelligence** is an educational AI/ML project designed to analyze Delhi's air quality, explore historical AQI patterns, evaluate machine learning models, and provide air-quality forecasting features.
+
+The platform combines a Python-based machine learning backend with a modern React dashboard.
+
+It focuses on:
+- Historical AQI analysis and replay.
+- Machine learning model evaluation.
+- AQI prediction experiments.
+- Weather information integration.
+- Model-versus-baseline performance comparisons.
+- An interactive dashboard for exploring results.
+
+## 🚀 Live Demo
+
+**Website:** https://delhi-aqi-prediction-i78z.onrender.com/
+
+The project is deployed using Render.
+
+## 🧠 Machine Learning Models
+
+The project uses supervised machine learning regression algorithms to learn patterns from historical air-quality and related data.
+
+| Model | Purpose |
+|---|---|
+| Gradient Boosting Regressor | 1-day AQI prediction |
+| Random Forest Regressor | 2-day AQI prediction |
+| HistGradientBoosting Regressor | Evaluated for 3-day prediction |
+| Persistence Baseline | Selected fallback for 3-day prediction |
+
+### Model explanations
+
+**1. Gradient Boosting Regressor**
+
+Builds multiple decision trees sequentially. Each new tree attempts to correct errors made by earlier trees.
+
+**2. Random Forest Regressor**
+
+Uses multiple decision trees and combines their predictions to produce a final estimate.
+
+**3. HistGradientBoosting Regressor**
+
+A histogram-based implementation of gradient boosting designed to train efficiently on numerical datasets.
+
+**4. Persistence Baseline**
+
+Uses the latest available AQI value as a simple forecast baseline. It is not a trained machine learning algorithm.
+
+### Model Performance
+
+Reported results on the held-out 2025 test period:
+
+| Forecast Horizon | Selected Approach | MAE | RMSE |
+|---|---|---:|---:|
+| 1 Day | Gradient Boosting | 15.78 | 21.89 |
+| 2 Days | Random Forest | 29.03 | 39.96 |
+| 3 Days | Persistence Baseline | 33.43 | — |
+
+**Evaluation metrics:**
+- MAE (Mean Absolute Error): Average absolute difference between predicted and actual values.
+- RMSE (Root Mean Squared Error): Measures prediction error while penalizing larger errors more strongly.
+
+The 3-day persistence baseline performed better than the tested HistGradientBoosting model, so it was selected for that horizon.
+
+## ✨ Key Features
+
+- **Historical Replay:** Explore historical AQI records and saved predictions.
+- **Model Evaluation:** Review model performance using saved evaluation reports.
+- **Prediction Comparison:** Compare model predictions against baseline approaches.
+- **Weather Integration:** Retrieve weather information through the Open-Meteo API.
+- **Interactive Dashboard:** Explore project outputs through a React-based interface.
+- **FastAPI Backend:** Python backend providing API endpoints for the dashboard.
+- **Render Deployment:** Hosted web application with a production build of the frontend.
+
+## 🏗️ Technology Stack
+
+| Technology | Usage |
+|---|---|
+| Python | Backend and ML development |
+| FastAPI | Backend API |
+| Scikit-learn | Machine learning algorithms |
+| Pandas | Data processing |
+| NumPy | Numerical computation |
+| React | Frontend interface |
+| TypeScript | Frontend development |
+| Vite | Frontend build tooling |
+| Open-Meteo API | Weather data |
+| Render | Deployment |
+| Git & GitHub | Version control |
+
+## 📂 Project Structure
+
+```text
+Delhi-AQI-Prediction/
+│
+├── app/
+│   ├── main.py
+│   ├── routes/
+│   ├── services/
+│   ├── static/
+│   └── tests/
+│
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   └── package.json
+│
+├── models/
+│   └── delhi_citywide_aqi_models.joblib
+│
+├── data/
+│   └── daily_history_2024_2025.csv
+│
+├── reports/
+│   ├── model_metrics.csv
+│   ├── model_metadata.json
+│   └── test_predictions_2025_H2.csv
+│
+├── requirements.txt
+├── render.yaml
+└── README.md
+```
+
+## ⚙️ Installation & Setup
 
 ### Prerequisites
 
-- Python 3.11+ (or the interpreter compatible with the saved model environment)
-- Node.js 22.12+ and npm
+- Python 3.11 or later
+- Node.js 22.12 or later
+- npm
+- Git
 
-### 1. Build the frontend
+### 1. Clone the repository
 
-From the project root (the folder containing `app`, `models`, `data`, `reports`, and `frontend`):
+```bash
+git clone https://github.com/Paurash324/delhi-aqi-prediction.git
+cd delhi-aqi-prediction
+```
+
+### 2. Create and activate a virtual environment
+
+**Windows PowerShell:**
 
 ```powershell
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+### 3. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Build the frontend
+
+```bash
 cd frontend
 npm ci
 npm run build
 cd ..
 ```
 
-The production build is written to `app/static/ui/`. The FastAPI backend serves that built UI from `/` and the assets from `/static` and `/assets`.
-
-### 2. Run the backend
-
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Open **https://delhi-aqi-prediction-i78z.onrender.com/**.
-
-## Running tests
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest app/tests/ -q
-```
-
-## Modes and data
-
-- **Historical Replay:** reads actual records from `reports/test_predictions_2025_H2.csv` and matching daily history from `data/daily_history_2024_2025.csv`.
-- **Model Evaluation:** reads frozen metrics from `reports/model_metrics.csv` and metadata from `reports/model_metadata.json`.
-- **Weather:** calls the existing Open-Meteo-backed FastAPI route. If the backend falls back to an offline baseline, the UI must label it as a simulated fallback, not an observation.
-- **Live AQI:** the API currently reports that compatible current pollution features are unavailable after the archive end date (2025-12-31). The app must therefore not fabricate a 2026 AQI prediction. Weather may still be available independently.
-
-## Architecture
+The frontend production build is generated inside:
 
 ```text
-frontend/ (React + Vite)
-        | same-origin /api/* requests
-        v
-app/main.py (FastAPI serves app/static/ui/index.html after build)
-        ├── app/routes/replay_routes.py
-        ├── app/routes/live_routes.py
-        ├── app/services/replay_service.py
-        ├── app/services/weather_service.py
-        └── app/services/prediction_service.py
-                  |
-        models/ + data/ + reports/
+app/static/ui/
 ```
 
-The React build outputs to `app/static/ui/`. `app/main.py` serves the built UI when it exists; otherwise it falls back to the older HTML template. The dashboard’s `/api/*` requests are relative and use the same FastAPI origin.
+### 5. Start the backend
 
-## Deployment on Render
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-This repo includes `render.yaml`, which defines a single Render Web Service:
+### 6. Open the application
 
-- **Root directory:** project root
-- **Build command:** install Node dependencies in `frontend/`, build the React UI into `app/static/ui/`, then install Python dependencies from `requirements.txt`
-- **Start command:** uvicorn on `app.main:app`, listening on the Render-assigned port
-- **Environment variables:**
-  - `DEBUG=false`
-  - `DATA_GOV_IN_API_KEY` — set this in Render; it is required only for the live station-observations panel and is never committed
+Dashboard:
 
-The live station-observations panel is the only feature that needs an API key (from data.gov.in). Weather and the external AQI forecast are public, keyless endpoints.
+```text
+http://127.0.0.1:8000
+```
 
-## Environment variables
+API documentation:
 
-- `DEBUG` — optional, defaults to false
-- `DATA_GOV_IN_API_KEY` — required only if you want `/api/live/observations` to work
+```text
+http://127.0.0.1:8000/docs
+```
 
-Do not commit `.env`, API keys, `.venv/`, `node_modules/`, or `__pycache__/`.
+## 🧪 Running Tests
 
-## Important limitations
+Run the backend test suite:
 
-- AQI targets are CPCB-method-derived estimates, not independently verified official CPCB bulletin values.
-- The frozen archive ends on 2025-12-31. Without refreshed, compatible station/pollutant history, a trustworthy current 2026 AQI forecast is unavailable.
-- The live station-observations panel requires a valid `DATA_GOV_IN_API_KEY`. Without it, observations are intentionally unavailable rather than fabricated.
-- Weather and the external AQI outlook are public, keyless services and may still be available even when the trained-model forecast path is not.
+```bash
+python -m pytest app/tests/ -q
+```
+
+## 🔌 APIs & Data Sources
+
+**Open-Meteo:** Used for weather information.
+
+**Historical project data:** The repository includes historical daily data and frozen model evaluation outputs.
+
+**Data.gov.in:** An API key can be configured for the live station-observations feature.
+
+To enable that feature, configure:
+
+```env
+DATA_GOV_IN_API_KEY=your_api_key_here
+```
+
+Never commit API keys or private environment files to GitHub.
+
+## ⚠️ Important Limitations
+
+This project is an educational prototype, not an official government AQI monitoring service.
+
+- The historical data archive currently ends on December 31, 2025.
+- A trustworthy current 2026 trained-model AQI forecast requires refreshed, compatible pollution features and historical data.
+- The application must not present unavailable live ML predictions as genuine model outputs.
+- Live station observations require a valid Data.gov.in API key.
+- Weather information is independent of the trained AQI prediction models.
+- The external AQI outlook is a separate forecast source, not a prediction generated by the historical trained-model bundle.
+- Model performance is based on the project's held-out test data and should not be interpreted as a guarantee of future accuracy.
+
+## 🎯 Project Objective
+
+The primary objective is to demonstrate how machine learning can be applied to air-quality analysis and forecasting.
+
+The project combines:
+- Supervised learning.
+- Regression algorithms.
+- Historical data analysis.
+- Model evaluation.
+- API development.
+- Frontend and backend integration.
+- Cloud deployment.
+
+## 👨‍💻 Developer
+
+**Developed by:** Paurash
+
+**GitHub:** https://github.com/Paurash324
+
+**Project Repository:** https://github.com/Paurash324/delhi-aqi-prediction
+
+---
+
+<p align="center">
+  <strong>Delhi Air Intelligence</strong><br>
+  Making air-quality data easier to explore and understand.
+</p>
+
